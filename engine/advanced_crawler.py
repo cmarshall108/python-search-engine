@@ -42,6 +42,8 @@ class SmartCrawler(Crawler):
         self.queue = PriorityQueue()  # Priority queue for importance-based crawling
         self.is_crawling = False
         self.lock = threading.Lock()
+        self.crawler_thread = None  # Track the crawler thread
+        self.thread_heartbeat = 0   # Heartbeat timestamp to monitor thread health
         
         # Crawler statistics
         self.crawl_stats = {
@@ -79,6 +81,43 @@ class SmartCrawler(Crawler):
         
         # Configure from settings
         self.load_settings()
+        
+        # Set up thread monitoring
+        self._setup_thread_monitor()
+
+    def _setup_thread_monitor(self):
+        """Set up periodic thread health monitoring"""
+        interval_ms = 30000  # Check every 30 seconds
+        
+        def check_thread_health():
+            # Only check if we believe we're crawling
+            if self.is_crawling:
+                # Check if thread is alive
+                if not self.crawler_thread or not self.crawler_thread.is_alive():
+                    logging.error("Crawler thread died but is_crawling flag is still True")
+                    self._reset_crawler_state()
+                # Check heartbeat (if no heartbeat for 60 seconds, consider thread stuck)
+                elif time.time() - self.thread_heartbeat > 60:
+                    logging.error("Crawler thread appears stuck (no heartbeat)")
+                    self._broadcast_update({"status": "warning", "message": "Crawler appears stuck"})
+            
+            # Schedule next check
+            tornado.ioloop.IOLoop.current().call_later(interval_ms/1000, check_thread_health)
+        
+        # Start the monitoring
+        tornado.ioloop.IOLoop.current().call_later(interval_ms/1000, check_thread_health)
+
+    def _reset_crawler_state(self):
+        """Reset the crawler state when detecting issues"""
+        with self.lock:
+            logging.warning("Forcibly resetting crawler state")
+            self.is_crawling = False
+            self.crawl_stats["status"] = "reset"
+            self.save_state("crawler_emergency_state.gz")  # Save emergency state
+            self._broadcast_update({
+                "status": "reset", 
+                "message": "Crawler state was reset due to detected issues"
+            })
 
     def load_settings(self):
         """Load crawler settings"""
@@ -337,92 +376,97 @@ class SmartCrawler(Crawler):
             resume: Whether to resume from a previously saved state
             force_recrawl: Whether to recrawl URLs even if they're in the database
         """
-        if self.is_crawling:
-            logging.warning("Crawler is already running")
-            self._broadcast_update({"status": "error", "message": "Crawler is already running"})
-            return False
-            
-        # Store force_recrawl setting
-        self.force_recrawl = force_recrawl
-        
-        if resume and self.load_state():
-            logging.info("Resuming previous crawl")
-        else:
-            # Only reset if not resuming
-            if not start_url:
-                logging.error("No start URL provided and not resuming")
-                self._broadcast_update({"status": "error", "message": "No URL provided"})
+        with self.lock:
+            if self.is_crawling:
+                logging.warning("Crawler is already running")
+                self._broadcast_update({"status": "error", "message": "Crawler is already running"})
                 return False
                 
-            logging.info(f"Starting new crawl with URL: {start_url}, depth: {depth}, force_recrawl: {force_recrawl}")
+            # Store force_recrawl setting
+            self.force_recrawl = force_recrawl
+            
+            if resume and self.load_state():
+                logging.info("Resuming previous crawl")
+            else:
+                # Only reset if not resuming
+                if not start_url:
+                    logging.error("No start URL provided and not resuming")
+                    self._broadcast_update({"status": "error", "message": "No URL provided"})
+                    return False
+                    
+                logging.info(f"Starting new crawl with URL: {start_url}, depth: {depth}, force_recrawl: {force_recrawl}")
+                    
+                # Reset stats
+                self.crawl_stats = {
+                    "crawled": 0,
+                    "queued": 1,
+                    "indexed": 0,
+                    "errors": 0,
+                    "skipped_duplicates": 0,
+                    "start_time": time.time(),
+                    "status": "running",
+                    "current_url": start_url,
+                    "recent_urls": [],
+                    "max_depth": depth,
+                    "domains_crawled": 0,
+                    "content_types": {},
+                    "robots_blocked": 0,
+                    "force_recrawl": force_recrawl
+                }
                 
-            # Reset stats
-            self.crawl_stats = {
-                "crawled": 0,
-                "queued": 1,
-                "indexed": 0,
-                "errors": 0,
-                "skipped_duplicates": 0,
-                "start_time": time.time(),
-                "status": "running",
-                "current_url": start_url,
-                "recent_urls": [],
-                "max_depth": depth,
-                "domains_crawled": 0,
-                "content_types": {},
-                "robots_blocked": 0,
-                "force_recrawl": force_recrawl
-            }
-            
-            # Reset state
-            self.visited_urls.clear()
-            
-            # Clear crawler_visits table if force_recrawl is enabled
-            if force_recrawl and self.use_db and self.db:
-                logging.info("Force recrawl enabled - clearing previous visit records")
-                self._clear_visit_records()
-            
-            # Initialize a new queue
-            old_queue = self.queue
-            self.queue = PriorityQueue()
-            
-            # Add start URL with highest priority (1)
-            logging.info(f"Adding start URL to queue: {start_url}")
-            self.queue.put((1, (start_url, 0)))  # (priority, (url, depth))
-            logging.info(f"Queue size after adding start URL: {self.queue.qsize()}")
-            
-            # Verify the queue has the URL
-            if self.queue.qsize() == 0:
-                logging.error("Failed to add URL to queue - queue remained empty!")
-                return False
-            
-            # Update metadata in DB if using it
-            if self.use_db and self.db:
-                self.db.update_metadata("last_crawl_time", time.time())
-                self.db.update_metadata("last_crawl_url", start_url)
+                # Reset state
+                self.visited_urls.clear()
+                
+                # Clear crawler_visits table if force_recrawl is enabled
+                if force_recrawl and self.use_db and self.db:
+                    logging.info("Force recrawl enabled - clearing previous visit records")
+                    self._clear_visit_records()
+                
+                # Initialize a new queue
+                old_queue = self.queue
+                self.queue = PriorityQueue()
+                
+                # Add start URL with highest priority (1)
+                logging.info(f"Adding start URL to queue: {start_url}")
+                self.queue.put((1, (start_url, 0)))  # (priority, (url, depth))
+                logging.info(f"Queue size after adding start URL: {self.queue.qsize()}")
+                
+                # Verify the queue has the URL
+                if self.queue.qsize() == 0:
+                    logging.error("Failed to add URL to queue - queue remained empty!")
+                    return False
+                
+                # Update metadata in DB if using it
+                if self.use_db and self.db:
+                    self.db.update_metadata("last_crawl_time", time.time())
+                    self.db.update_metadata("last_crawl_url", start_url)
         
-        try:
-            # Start crawling in a separate thread
-            crawler_thread = threading.Thread(target=self._crawl_thread)
-            crawler_thread.daemon = True
-            crawler_thread.start()
-            
-            logging.info(f"Crawler thread started with {'resumed state' if resume else start_url}")
-            self._broadcast_update({
-                "status": "started", 
-                "url": self.crawl_stats["current_url"], 
-                "depth": self.crawl_stats.get("max_depth", depth)
-            })
-            return True
-        except Exception as e:
-            logging.error(f"Failed to start crawler thread: {e}")
-            logging.error(traceback.format_exc())
-            self.is_crawling = False
-            self._broadcast_update({
-                "status": "error",
-                "message": f"Failed to start crawler: {str(e)}"
-            })
-            return False
+            try:
+                # Start crawling in a separate thread
+                self.thread_heartbeat = time.time()  # Initialize heartbeat
+                self.crawler_thread = threading.Thread(target=self._crawl_thread)
+                self.crawler_thread.daemon = True
+                self.crawler_thread.start()
+                
+                # Set state flag after thread started successfully
+                self.is_crawling = True
+                
+                logging.info(f"Crawler thread started with {'resumed state' if resume else start_url}")
+                self._broadcast_update({
+                    "status": "started", 
+                    "url": self.crawl_stats["current_url"], 
+                    "depth": self.crawl_stats.get("max_depth", depth)
+                })
+                return True
+            except Exception as e:
+                logging.error(f"Failed to start crawler thread: {e}")
+                logging.error(traceback.format_exc())
+                self.is_crawling = False
+                self._broadcast_update({
+                    "status": "error",
+                    "message": f"Failed to start crawler: {str(e)}"
+                })
+                return False
     
     def _clear_visit_records(self):
         """Clear crawler visit records for a fresh crawl"""
@@ -440,9 +484,10 @@ class SmartCrawler(Crawler):
 
     def _crawl_thread(self):
         """Main crawling logic"""
-        self.is_crawling = True
-        
         try:
+            # Update heartbeat to show thread is running
+            self.thread_heartbeat = time.time()
+            
             # Track and log thread identity for debugging
             logging.info(f"Crawler thread started: {threading.current_thread().name}")
             logging.info(f"Queue size at start: {self.queue.qsize()}")
@@ -450,6 +495,7 @@ class SmartCrawler(Crawler):
             if self.queue.qsize() == 0:
                 logging.error("Queue is empty! This is unexpected.")
                 self._broadcast_update({"status": "error", "message": "Queue was empty at start"})
+                self.is_crawling = False  # Reset flag
                 return
                 
             # Debug: Check queue content
@@ -460,7 +506,13 @@ class SmartCrawler(Crawler):
             # Loop through URLs until queue is empty
             urls_processed = 0
             max_urls = 10000  # Safety limit
+            last_heartbeat = time.time()
+            
             while not self.queue.empty() and urls_processed < max_urls:
+                # Update heartbeat periodically (every 10 URLs)
+                if urls_processed % 10 == 0:
+                    self.thread_heartbeat = time.time()
+                
                 # Check if we're being asked to stop
                 if self.crawl_stats["status"] == "stopping":
                     logging.info("Stopping crawler as requested")
@@ -595,15 +647,19 @@ class SmartCrawler(Crawler):
                     self.queue.task_done()
                     
                 except QueueEmpty:
-                    # Queue timeout - log but continue processing
-                    logging.info("Queue get timed out, will retry")
+                    # Queue timeout - log and continue processing
+                    logging.info("Queue get timed out, checking if we should continue...")
+                    # Check if queue is actually empty now to avoid infinite loops
+                    if self.queue.empty():
+                        logging.info("Queue is empty, ending crawl loop")
+                        break
                     continue
                 
                 except Exception as e:
                     logging.error(f"Error in crawl loop: {e}")
                     logging.error(traceback.format_exc())
                     self.crawl_stats["errors"] += 1
-                    # Still mark the queue task as done if we were processing one
+                    # Mark the queue task as done if appropriate
                     try:
                         self.queue.task_done()
                     except:
@@ -640,6 +696,7 @@ class SmartCrawler(Crawler):
             self._broadcast_update({"status": "error", "message": str(e)})
         
         finally:
+            # Always reset crawling flag when thread exits
             self.is_crawling = False
             logging.info(f"Crawl finished: {self.crawl_stats['crawled']} pages, {self.crawl_stats['errors']} errors")
 
@@ -754,7 +811,7 @@ class SmartCrawler(Crawler):
             # Process links if below depth limit
             if depth < self.crawl_stats.get("max_depth", 2):
                 links = self.extract_links(content, url)
-                links_added = self._add_links_to_queue(links, depth)
+                links_added = self._add_links_to_queue(links, current_depth=depth)
                 logging.info(f"Added {links_added} links from {url}")
             else:
                 logging.info(f"Max depth reached ({depth}), not extracting links from {url}")
@@ -827,18 +884,51 @@ class SmartCrawler(Crawler):
 
     def stop_crawl(self):
         """Stop the crawler and save state for later resuming"""
-        if not self.is_crawling:
-            return False
-        
-        # Set a flag to request stopping
-        self.crawl_stats["status"] = "stopping"
-        self._broadcast_update({"status": "stopping", "message": "Stopping crawler..."})
-        
-        # Save state for resuming later
-        self.save_state()
-        
-        return True
-    
+        with self.lock:
+            if not self.is_crawling and not self.crawler_thread:
+                return False
+            
+            # Check if the thread is actually running
+            if self.crawler_thread and not self.crawler_thread.is_alive():
+                logging.warning("Crawler thread not alive, force resetting state")
+                self.is_crawling = False
+                self._broadcast_update({"status": "reset", "message": "Crawler state reset"})
+                return True
+            
+            # Set a flag to request stopping
+            self.crawl_stats["status"] = "stopping"
+            self._broadcast_update({"status": "stopping", "message": "Stopping crawler..."})
+            
+            # Save state for resuming later
+            self.save_state()
+            
+            # Set a timer to force stop if thread doesn't exit
+            def force_stop():
+                if self.is_crawling:
+                    logging.warning("Forcing crawler to stop after timeout")
+                    self.is_crawling = False
+                    self._broadcast_update({
+                        "status": "force_stopped", 
+                        "message": "Crawler was force stopped after timeout"
+                    })
+            
+            # Wait up to 30 seconds, then force stop
+            tornado.ioloop.IOLoop.current().call_later(30, force_stop)
+            
+            return True
+            
+    def force_stop(self):
+        """Force stop the crawler immediately, regardless of state"""
+        with self.lock:
+            old_status = self.is_crawling
+            self.is_crawling = False
+            self.crawl_stats["status"] = "force_stopped"
+            self._broadcast_update({
+                "status": "force_stopped", 
+                "message": "Crawler was force stopped"
+            })
+            return old_status  # Return previous state
+
     def _broadcast_update(self, message):
         """Send updates to all connected WebSocket clients"""
         if not self.websocket_clients:

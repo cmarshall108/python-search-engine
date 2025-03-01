@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoSearch - Modern Search Engine</title>
+    <link rel="stylesheet" href="{{ static_url('css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="home-container">
+        <div class="search-container">
+            <div class="logo">
+                <span class="logo-text">Neo<span class="logo-highlight">Search</span></span>
+            </div>
+            
+            <form action="/search" method="get" class="search-form">
+                <div class="search-box">
+                    <input type="text" name="q" id="search-input" placeholder="Search the web..." autocomplete="off">
+                    <button type="submit" class="search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="/enhanced" style="color: #4285f4; text-decoration: underline;">Try our new enhanced interface</a>
+            </div>
+
+            <div class="admin-panel">
+                <h3>Admin Controls</h3>
+                <div class="admin-controls">
+                    <form id="crawl-form" class="admin-form">
+                        <input type="url" id="crawler-url" placeholder="https://example.com" required>
+                        <select id="crawler-depth">
+                            <option value="1">Depth: 1</option>
+                            <option value="2" selected>Depth: 2</option>
+                            <option value="3">Depth: 3</option>
+                        </select>
+                        <div class="form-check form-switch" style="margin-left: 10px;">
+                            <input class="form-check-input" type="checkbox" id="force-recrawl">
+                            <label class="form-check-label" for="force-recrawl">Force Recrawl</label>
+                        </div>
+                        <button type="submit" id="start-crawl" class="admin-button">Start Crawling</button>
+                    </form>
+                    
+                    <div class="admin-buttons">
+                        <button id="save-index" class="admin-button">Save Index</button>
+                        <button id="load-index" class="admin-button">Load Index</button>
+                    </div>
+                </div>
+                <div id="admin-message" class="admin-message"></div>
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <p>© 2023 NeoSearch - A Modern Search Engine</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('crawl-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = document.getElementById('crawler-url').value;
+            const depth = document.getElementById('crawler-depth').value;
+            
+            fetch('/api/crawl', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `url=${encodeURIComponent(url)}&depth=${encodeURIComponent(depth)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('admin-message').textContent = data.message;
+                document.getElementById('admin-message').style.display = 'block';
+            });
+        });
+        
+        document.getElementById('save-index').addEventListener('click', function() {
+            fetch('/api/save_index', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('admin-message').textContent = data.message;
+                    document.getElementById('admin-message').style.display = 'block';
+                });
+        });
+        
+        document.getElementById('load-index').addEventListener('click', function() {
+            fetch('/api/load_index', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('admin-message').textContent = data.message;
+                    document.getElementById('admin-message').style.display = 'block';
+                });
+        });
+    </script>
+</body>
+</html>

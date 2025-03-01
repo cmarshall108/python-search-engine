@@ -1,0 +1,42 @@
+{
+    "filepath": "/Users/calebmarshall/Desktop/search-engine/crawler_settings.json",
+    "min_crawl_delay": 1.0,
+    "max_depth": 5,
+    "user_agent": "Mozilla/5.0 SmartCrawler/1.0",
+    "respect_robots_txt": true,
+    "follow_redirects": true,
+    "timeout": 10,
+    "max_retries": 2,
+    "max_urls_per_domain": 1000,
+    "duplicate_content_detection": true,
+    "compression_enabled": true,
+    "cache_expiry_hours": 24,
+    "save_state_interval": 100,
+    "domain_importance": {
+      "wikipedia.org": 10,
+      "github.com": 9,
+      "docs.python.org": 8,
+      "stackoverflow.com": 7,
+      "developer.mozilla.org": 7
+    },
+    "prioritize_content_types": [
+      "text/html",
+      "application/xhtml+xml",
+      "application/xml"
+    ],
+    "ignore_url_patterns": [
+      ".*\\.pdf$",
+      ".*\\.zip$",
+      ".*\\?replytocom=.*$",
+      ".*\\/wp-admin\\/.*$",
+      ".*\\/wp-login\\.php.*$",
+      ".*\\/feed\\/.*$"
+    ],
+    "extract_metadata": true,
+    "extract_structured_data": true,
+    "content_filters": {
+      "min_content_length": 200,
+      "max_title_length": 100,
+      "keywords_density_threshold": 0.1
+    }
+}

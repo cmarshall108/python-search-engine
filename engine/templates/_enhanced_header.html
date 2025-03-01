@@ -1,0 +1,32 @@
+<header class="header">
+  <div class="container header-container">
+    <a href="/enhanced" class="logo">
+      <span>Smart<span class="logo-accent">Search</span></span>
+    </a>
+
+    <div class="search-box-container">
+      <form id="search-form" action="/enhanced/search" method="get">
+        <div class="search-box">
+          <input type="text" name="q" class="search-input" value="{{ query|default('') }}" autocomplete="off" {% if not query %}autofocus{% endif %}>
+          <button type="button" class="voice-search" aria-label="Search by voice">
+            <i class="fas fa-microphone"></i>
+          </button>
+          <button type="submit" class="search-button" aria-label="Search">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+        <input type="hidden" id="search-type" name="type" value="{{ search_type|default('web') }}">
+        <input type="hidden" id="time-filter-input" name="time" value="{{ time_period|default('') }}">
+
+        <!-- Search suggestions container -->
+        <div class="search-suggestions"></div>
+      </form>
+    </div>
+
+    <div class="theme-switcher">
+      <button class="theme-button" aria-label="Toggle dark mode">
+        <i class="fas fa-moon"></i>
+      </button>
+    </div>
+  </div>
+</header>

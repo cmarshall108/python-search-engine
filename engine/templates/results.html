@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ query }} - Search Results</title>
+    <link rel="stylesheet" href="{{ static_url('css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <!-- Theme Switcher -->
+    <div class="theme-switcher">
+        <div class="theme-option theme-light active" data-theme="light"></div>
+        <div class="theme-option theme-dark" data-theme="dark"></div>
+        <div class="theme-option theme-pastel" data-theme="pastel"></div>
+    </div>
+
+    <div class="results-container">
+        <div class="results-header">
+            <div class="results-logo">
+                <a href="/">
+                    <h1 class="results-logo-text">Search<span class="logo-highlight">Pro</span></h1>
+                </a>
+            </div>
+            <form class="results-search-form" action="/search" method="get">
+                <div class="results-search-box">
+                    <input type="text" id="search-input" name="q" value="{{ query }}" autocomplete="off">
+                    <button type="submit" class="search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Focus Mode Toggle -->
+        <div class="focus-mode-toggle">
+            <div class="toggle-track">
+                <div class="toggle-thumb"></div>
+            </div>
+            <span>Focus Mode</span>
+        </div>
+        
+        <!-- Time Machine Search -->
+        <div class="time-machine">
+            <i class="fas fa-clock"></i>
+            <div class="time-slider">
+                <div class="time-handle"></div>
+            </div>
+            <div class="time-display">2023</div>
+        </div>
+
+        <!-- AI-generated Summary -->
+        <div class="ai-summary-box">
+            <div class="ai-summary-title">
+                <i class="fas fa-robot"></i>
+                <span>AI Summary</span>
+            </div>
+            <div class="ai-summary-content">
+                <!-- This will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Results Count -->
+        <div class="results-count">
+            About {{ total_results }} results
+        </div>
+
+        <!-- View Switcher -->
+        <div class="view-switcher">
+            <div class="view-option active" data-view="list">
+                <i class="fas fa-list"></i> List View
+            </div>
+            <div class="view-option" data-view="visual">
+                <i class="fas fa-th-large"></i> Visual View
+            </div>
+        </div>
+
+        <!-- Standard List Results -->
+        <ul class="search-results">
+            {% if results %}
+                {% for result in results %}
+                    <li class="result-item">
+                        <a href="{{ result['url'] }}" class="result-title">{{ result['title'] }}</a>
+                        <span class="result-url">{{ result['url'] }}</span>
+                        <p class="result-snippet">{{ result['snippet'] }}</p>
+                    </li>
+                {% end %}
+            {% else %}
+                <div class="no-results">No results found for "{{ query }}"</div>
+            {% end %}
+        </ul>
+
+        <!-- Visual Grid Results (initially hidden) -->
+        <div class="visual-results" style="display: none;">
+            {% if results %}
+                {% for result in results %}
+                    <div class="visual-result-item">
+                        <div class="visual-result-preview">
+                            {% if 'image' in result %}
+                                <img src="{{ result['image'] }}" alt="{{ result['title'] }}">
+                            {% else %}
+                                <i class="far fa-file-alt"></i>
+                            {% end %}
+                        </div>
+                        <div class="visual-result-content">
+                            <a href="{{ result['url'] }}" class="result-title">{{ result['title'] }}</a>
+                            <p class="result-snippet">{{ result['snippet'][:100] }}{% if len(result['snippet']) > 100 %}...{% end %}</p>
+                        </div>
+                    </div>
+                {% end %}
+            {% else %}
+                <div class="no-results">No results found for "{{ query }}"</div>
+            {% end %}
+        </div>
+
+        <!-- Pagination -->
+        {% if total_results > 0 %}
+            <div class="pagination">
+                {% for p in pages %}
+                    {% if p == current_page %}
+                        <a href="/search?q={{ query }}&page={{ p }}" class="page-link active">{{ p }}</a>
+                    {% else %}
+                        <a href="/search?q={{ query }}&page={{ p }}" class="page-link">{{ p }}</a>
+                    {% end %}
+                {% end %}
+            </div>
+        {% end %}
+    </div>
+
+    <script src="{{ static_url('js/features.js') }}"></script>
+</body>
+</html>

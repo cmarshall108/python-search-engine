@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Search</title>
+  <link rel="stylesheet" href="{{ static_url('css/enhanced-style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Theme Switcher -->
+  <div class="theme-switcher">
+    <button class="theme-button" aria-label="Toggle dark mode">
+      <i class="fas fa-moon"></i>
+    </button>
+  </div>
+
+  <main class="main">
+    <div class="home-container">
+      <div class="home-logo">
+        Smart<span>Search</span>
+      </div>
+
+      <div class="home-search">
+        <form id="search-form" action="/search" method="get">
+          <div class="search-box">
+            <input type="text" name="q" class="search-input" placeholder="Search the web..." autocomplete="off" autofocus>
+            <button type="button" class="voice-search" aria-label="Search by voice">
+              <i class="fas fa-microphone"></i>
+            </button>
+            <button type="submit" class="search-button" aria-label="Search">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+          <input type="hidden" id="search-type" name="type" value="web">
+
+          <!-- Search suggestions container -->
+          <div class="search-suggestions"></div>
+
+          <!-- Search type filters -->
+          <div class="search-filters">
+            <div class="search-filter active" data-type="web">
+              <i class="fas fa-globe"></i> Web
+            </div>
+            <div class="search-filter" data-type="images">
+              <i class="fas fa-image"></i> Images
+            </div>
+            <div class="search-filter" data-type="news">
+              <i class="fas fa-newspaper"></i> News
+            </div>
+            <div class="search-filter" data-type="videos">
+              <i class="fas fa-video"></i> Videos
+            </div>
+            <div class="search-filter" data-type="maps">
+              <i class="fas fa-map-marker-alt"></i> Maps
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Trending searches module -->
+      <div class="trending-searches">
+        <h3>Trending Searches</h3>
+        <div class="trending-items">
+          <a href="/search?q=artificial intelligence" class="trending-item">
+            <i class="fas fa-chart-line"></i> Artificial Intelligence
+          </a>
+          <a href="/search?q=climate change" class="trending-item">
+            <i class="fas fa-chart-line"></i> Climate Change
+          </a>
+          <a href="/search?q=renewable energy" class="trending-item">
+            <i class="fas fa-chart-line"></i> Renewable Energy
+          </a>
+          <a href="/search?q=machine learning" class="trending-item">
+            <i class="fas fa-chart-line"></i> Machine Learning
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-links">
+        <a href="/about" class="footer-link">About</a>
+        <a href="/privacy" class="footer-link">Privacy</a>
+        <a href="/terms" class="footer-link">Terms</a>
+        <a href="/admin" class="footer-link">Admin</a>
+      </div>
+      <div class="footer-copyright">
+        &copy; 2025 SmartSearch - An Intelligent Search Engine Project
+      </div>
+    </div>
+  </footer>
+
+  <script src="{{ static_url('js/enhanced-search.js') }}"></script>
+</body>
+</html>

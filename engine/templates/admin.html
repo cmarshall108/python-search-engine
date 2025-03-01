@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Engine Admin</title>
+    <link rel="stylesheet" href="{{ static_url('css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <div class="admin-logo">
+                <a href="/">
+                    <h1 class="logo-text">Search<span class="logo-highlight">Pro</span></h1>
+                </a>
+            </div>
+            <h2>Admin Dashboard</h2>
+            
+            <!-- Add links to different UI versions -->
+            <div class="admin-ui-links">
+                <a href="/" class="admin-link">Classic UI</a>
+                <a href="/enhanced" class="admin-link">Enhanced UI</a>
+            </div>
+        </header>
+
+        <div class="admin-content">
+            <section class="admin-section">
+                <h3><i class="fas fa-spider"></i> Web Crawler</h3>
+                <div class="crawler-controls">
+                    <form id="crawler-form" class="admin-form">
+                        <input type="url" id="crawler-url" placeholder="Enter URL to crawl" required>
+                        <select id="crawler-depth">
+                            <option value="1">Depth: 1</option>
+                            <option value="2" selected>Depth: 2</option>
+                            <option value="3">Depth: 3</option>
+                            <option value="4">Depth: 4</option>
+                            <option value="5">Depth: 5</option>
+                        </select>
+                        <div class="form-check form-switch" style="margin-left: 10px;">
+                            <input class="form-check-input" type="checkbox" id="force-recrawl">
+                            <label class="form-check-label" for="force-recrawl">Force Recrawl</label>
+                            <span class="form-text text-muted small">Recrawl URLs even if already visited</span>
+                        </div>
+                        <button type="submit" class="admin-button" id="start-crawler">
+                            <i class="fas fa-play"></i> Start Crawling
+                        </button>
+                    </form>
+                    <div class="advanced-controls">
+                        <button class="admin-button" id="resume-crawler">
+                            <i class="fas fa-redo"></i> Resume Crawler
+                        </button>
+                        <button class="admin-button admin-button-warning" id="stop-crawler">
+                            <i class="fas fa-pause"></i> Stop Crawler
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Crawler Status Panel -->
+                <div class="crawler-status-panel" id="crawler-status-panel">
+                    <div class="status-header">
+                        <div class="status-title">
+                            <div class="status-indicator">
+                                <div class="status-dot" id="status-dot"></div>
+                                <span id="status-animation"></span>
+                            </div>
+                            <h4>Crawler Status: <span id="crawler-status-text">Idle</span></h4>
+                        </div>
+                        <div class="crawler-progress">
+                            <div class="progress-bar">
+                                <div class="progress-bar-fill" id="crawler-progress-bar"></div>
+                            </div>
+                            <div class="progress-info">
+                                <span id="progress-percentage">0%</span>
+                                <span id="progress-ratio">(0/0)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status-stats">
+                        <div class="stat-box">
+                            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-label">Crawled</div>
+                            <div class="stat-value" id="stat-crawled">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-icon"><i class="fas fa-database"></i></div>
+                            <div class="stat-label">Indexed</div>
+                            <div class="stat-value" id="stat-indexed">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-icon"><i class="fas fa-list-ul"></i></div>
+                            <div class="stat-label">Queued</div>
+                            <div class="stat-value" id="stat-queued">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                            <div class="stat-label">Errors</div>
+                            <div class="stat-value" id="stat-errors">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-icon"><i class="fas fa-stopwatch"></i></div>
+                            <div class="stat-label">Elapsed</div>
+                            <div class="stat-value" id="stat-time">0s</div>
+                        </div>
+                    </div>
+
+                    <div class="current-url-container">
+                        <div class="current-url-label">
+                            <i class="fas fa-globe"></i> Currently crawling:
+                        </div>
+                        <div class="current-url" id="current-url">-</div>
+                    </div>
+
+                    <div class="recent-urls-container">
+                        <h5><i class="fas fa-history"></i> Recently Crawled Pages</h5>
+                        <div class="refresh-counter" id="refresh-counter">
+                            <span>Last update: <span id="last-update-time">0s</span> ago</span>
+                        </div>
+                        <ul class="recent-urls-list" id="recent-urls">
+                            <!-- Will be filled dynamically -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Live Activity Feed -->
+                <div class="activity-feed-container">
+                    <h5><i class="fas fa-rss"></i> Crawler Activity Feed</h5>
+                    <div class="activity-feed" id="activity-feed">
+                        <!-- Will be filled dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-section">
+                <h3><i class="fas fa-database"></i> Index Management</h3>
+                <div class="index-stats">
+                    <div class="stat-box">
+                        <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
+                        <div class="stat-label">Documents</div>
+                        <div class="stat-value" id="stat-documents">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon"><i class="fas fa-key"></i></div>
+                        <div class="stat-label">Keywords</div>
+                        <div class="stat-value" id="stat-keywords">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon"><i class="fas fa-hdd"></i></div>
+                        <div class="stat-label">Index Size</div>
+                        <div class="stat-value" id="stat-index-size">0 KB</div>
+                    </div>
+                </div>
+                <div class="admin-buttons">
+                    <button id="save-index" class="admin-button">
+                        <i class="fas fa-save"></i> Save Index
+                    </button>
+                    <button id="load-index" class="admin-button">
+                        <i class="fas fa-upload"></i> Load Index
+                    </button>
+                    <button id="clear-index" class="admin-button admin-button-danger">
+                        <i class="fas fa-trash-alt"></i> Clear Index
+                    </button>
+                </div>
+                <div class="storage-stats">
+                    <h4><i class="fas fa-chart-pie"></i> Storage Efficiency</h4>
+                    <div class="storage-chart">
+                        <div class="storage-chart-fill" id="storage-chart-fill"></div>
+                        <div class="storage-numbers">
+                            <span id="storage-saved">Saved: 0 KB</span>
+                            <span id="storage-percent">0%</span>
+                        </div>
+                    </div>
+                    <div class="storage-details">
+                        <div class="storage-detail">
+                            <label>Original Size:</label>
+                            <span id="original-size">0 KB</span>
+                        </div>
+                        <div class="storage-detail">
+                            <label>Compressed Size:</label>
+                            <span id="compressed-size">0 KB</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cache Management Section -->
+            <section class="admin-section">
+                <h3><i class="fas fa-sd-card"></i> Cache Management</h3>
+                <div class="index-stats">
+                    <div class="stat-box">
+                        <div class="stat-icon"><i class="fas fa-save"></i></div>
+                        <div class="stat-label">Cached Pages</div>
+                        <div class="stat-value" id="stat-cached-pages">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="stat-label">Last Clear</div>
+                        <div class="stat-value" id="stat-last-cache-clear">Never</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon"><i class="fas fa-hdd"></i></div>
+                        <div class="stat-label">Cache Size</div>
+                        <div class="stat-value" id="stat-cache-size">0 KB</div>
+                    </div>
+                </div>
+                <div class="admin-buttons">
+                    <button id="clear-cache" class="admin-button">
+                        <i class="fas fa-broom"></i> Clear Expired Cache
+                    </button>
+                    <button id="clear-all-cache" class="admin-button admin-button-danger">
+                        <i class="fas fa-trash-alt"></i> Clear All Cache
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="{{ static_url('js/admin.js') }}"></script>
+</body>
+</html>

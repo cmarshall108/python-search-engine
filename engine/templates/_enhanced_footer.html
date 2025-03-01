@@ -1,0 +1,29 @@
+<footer class="footer">
+  <div class="container footer-container">
+    <div class="footer-links">
+      <a href="/about" class="footer-link">About</a>
+      <a href="/privacy" class="footer-link">Privacy</a>
+      <a href="/terms" class="footer-link">Terms</a>
+      <a href="/admin" class="footer-link">Admin</a>
+    </div>
+    <div class="footer-copyright">
+      &copy; 2025 SmartSearch - An Intelligent Search Engine Project
+    </div>
+  </div>
+</footer>
+
+<!-- Core scripts -->
+<script src="{{ static_url('js/enhanced-search.js') }}"></script>
+
+<!-- Add PWA support -->
+<script>
+  // Register service worker for PWA capabilities if supported
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/service-worker.js')
+      .then(registration => {
+        console.log('Service Worker registered with scope:', registration.scope);
+      }).catch(error => {
+        console.log('Service Worker registration failed:', error);
+      });
+  }
+</script>

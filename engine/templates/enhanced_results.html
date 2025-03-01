@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ query }} - Smart Search Results</title>
+  <link rel="stylesheet" href="{{ static_url('css/enhanced-style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header with search bar -->
+  <header class="header">
+    <div class="container header-container">
+      <a href="/enhanced" class="logo">
+        <span>Smart<span class="logo-accent">Search</span></span>
+      </a>
+
+      <div class="search-box-container">
+        <form id="search-form" action="/enhanced/search" method="get">
+          <div class="search-box">
+            <input type="text" name="q" class="search-input" value="{{ query }}" autocomplete="off">
+            <button type="button" class="voice-search" aria-label="Search by voice">
+              <i class="fas fa-microphone"></i>
+            </button>
+            <button type="submit" class="search-button" aria-label="Search">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+          <input type="hidden" id="search-type" name="type" value="{{ search_type|default('web') }}">
+          <input type="hidden" id="time-filter-input" name="time" value="{{ time_period|default('') }}">
+
+          <!-- Search suggestions container -->
+          <div class="search-suggestions"></div>
+        </form>
+      </div>
+
+      <div class="theme-switcher">
+        <button class="theme-button" aria-label="Toggle dark mode">
+          <i class="fas fa-moon"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search type filters -->
+    <div class="container">
+      <div class="search-filters">
+        <div class="search-filter {% if search_type == 'web' or not search_type %}active{% endif %}" data-type="web">
+          <i class="fas fa-globe"></i> Web
+        </div>
+        <div class="search-filter {% if search_type == 'images' %}active{% endif %}" data-type="images">
+          <i class="fas fa-image"></i> Images
+        </div>
+        <div class="search-filter {% if search_type == 'news' %}active{% endif %}" data-type="news">
+          <i class="fas fa-newspaper"></i> News
+        </div>
+        <div class="search-filter {% if search_type == 'videos' %}active{% endif %}" data-type="videos">
+          <i class="fas fa-video"></i> Videos
+        </div>
+        <div class="search-filter {% if search_type == 'maps' %}active{% endif %}" data-type="maps">
+          <i class="fas fa-map-marker-alt"></i> Maps
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="main">
+    <div class="results-container">
+      <!-- Time filter -->
+      <div class="time-filter">
+        <label for="year-slider">Filter results by year: <span class="year-display">2025</span></label>
+        <input type="range" id="year-slider" class="year-slider" min="1990" max="2025" value="{{ time_period|default('2025') }}" step="1">
+      </div>
+
+      <!-- Focus mode toggle -->
+      <div class="focus-mode-toggle">
+        <div class="toggle-track">
+          <div class="toggle-thumb"></div>
+        </div>
+        <span>Focus Mode</span>
+      </div>
+
+      <!-- Results count -->
+      <div class="results-count">
+        About {{ total_results }} results ({{ '%.2f'|format(elapsed_time|default(0.1)) }} seconds)
+      </div>
+
+      <!-- Quick answer box for certain queries -->
+      {% if quick_answer %}
+      <div class="quick-answer">
+        <div class="quick-answer-title">
+          <i class="fas fa-lightbulb"></i> {{ quick_answer.title }}
+        </div>
+        <div class="quick-answer-content">
+          {{ quick_answer.content }}
+        </div>
+        <div class="quick-answer-source">
+          Source: <a href="{{ quick_answer.source_url }}" target="_blank">{{ quick_answer.source }}</a>
+        </div>
+        <div class="feedback-container">
+          <span>Did this answer your question?</span>
+          <button class="feedback-btn" data-value="yes"><i class="fas fa-thumbs-up"></i> Yes</button>
+          <button class="feedback-btn" data-value="no"><i class="fas fa-thumbs-down"></i> No</button>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Debug info (only visible in development) -->
+      {% if options.debug %}
+      <div class="debug-info" style="background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc; font-family: monospace;">
+        <h4>Debug Information</h4>
+        <ul>
+          <li>Query: {{ query }}</li>
+          <li>Search Type: {{ search_type }}</li>
+          <li>Total Results: {{ total_results }}</li>
+          <li>Results Length: {{ results|length if results else 0 }}</li>
+          <li>Current Page: {{ current_page }}</li>
+          <li>Total Pages: {{ total_pages }}</li>
+          {% if results %}
+          <li>First result: {{ results[0].title }}</li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <!-- Web Results -->
+      {% if search_type == 'web' or not search_type %}
+        <div class="results-list">
+          {% if results %}
+            {% for result in results %}
+              <div class="result-item">
+                <div class="result-source">
+                  <img src="{{ result.favicon }}" alt="" class="result-favicon"> 
+                  {{ result.domain }}
+                </div>
+                <a href="{{ result.url }}" class="result-title">{{ result.title }}</a>
+                <div class="result-snippet">{{ result.snippet }}</div>
+                <a href="{{ result.url }}" class="result-url">{{ result.url }}</a>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="no-results">No results found for "{{ query }}". Please try a different search term.</div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <!-- Image Results -->
+      {% if search_type == 'images' %}
+        <div class="image-results">
+          {% if results %}
+            {% for image in results %}
+              <div class="image-result">
+                <img src="{{ image.thumbnail_url }}" alt="{{ image.title }}">
+                <div class="image-info">
+                  <div class="image-title">{{ image.title }}</div>
+                  <div class="image-source">{{ image.domain }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="no-results">No image results found for "{{ query }}". Please try a different search term.</div>
+          {% endif %}
+        </div>
+
+        <!-- Lightbox for images -->
+        <div id="lightbox" class="lightbox">
+          <div class="lightbox-content">
+            <button class="lightbox-close">&times;</button>
+            <img id="lightbox-image" class="lightbox-image" src="" alt="">
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- News Results -->
+      {% if search_type == 'news' %}
+        <div class="news-results">
+          {% if results %}
+            {% for news in results %}
+              <div class="news-item">
+                {% if news.image_url %}
+                  <img src="{{ news.image_url }}" alt="" class="news-image">
+                {% endif %}
+                <div class="news-content">
+                  <div class="news-source">
+                    {{ news.source }} <span class="news-date">{{ news.date }}</span>
+                  </div>
+                  <a href="{{ news.url }}" class="news-title">{{ news.title }}</a>
+                  <div class="news-snippet">{{ news.snippet }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="no-results">No news results found for "{{ query }}". Please try a different search term.</div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <!-- Video Results -->
+      {% if search_type == 'videos' %}
+        <div class="video-results">
+          {% if results %}
+            {% for video in results %}
+              <div class="video-item">
+                <div class="video-thumbnail">
+                  <img src="{{ video.thumbnail_url }}" alt="{{ video.title }}">
+                  <div class="video-duration">{{ video.duration }}</div>
+                </div>
+                <div class="video-content">
+                  <a href="{{ video.video_url }}" class="video-title">{{ video.title }}</a>
+                  <div class="video-info">
+                    <span class="video-platform">{{ video.platform }}</span>
+                    <span class="video-views">{{ video.views }} views</span>
+                    <span class="video-date">{{ video.published }}</span>
+                  </div>
+                  <div class="video-description">{{ video.description }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="no-results">No video results found for "{{ query }}". Please try a different search term.</div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <!-- Pagination -->
+      {% if total_results > 0 %}
+        <div class="pagination">
+          {% if current_page > 1 %}
+            <a href="/enhanced/search?q={{ query|urlencode }}&page={{ current_page - 1 }}&type={{ search_type }}" class="page-button">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          {% endif %}
+          
+          {% for page_num in range(1, total_pages + 1) %}
+            {% if page_num == current_page %}
+              <span class="page-button active">{{ page_num }}</span>
+            {% else %}
+              <a href="/enhanced/search?q={{ query|urlencode }}&page={{ page_num }}&type={{ search_type }}" class="page-button">{{ page_num }}</a>
+            {% endif %}
+          {% endfor %}
+          
+          {% if current_page < total_pages %}
+            <a href="/enhanced/search?q={{ query|urlencode }}&page={{ current_page + 1 }}&type={{ search_type }}" class="page-button">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <!-- Related searches -->
+      {% if related_searches %}
+        <div class="related-searches">
+          <h3>Related Searches</h3>
+          <div class="related-items">
+            {% for related in related_searches %}
+              <a href="/enhanced/search?q={{ related|urlencode }}" class="related-item">{{ related }}</a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-links">
+        <a href="/about" class="footer-link">About</a>
+        <a href="/privacy" class="footer-link">Privacy</a>
+        <a href="/terms" class="footer-link">Terms</a>
+        <a href="/admin" class="footer-link">Admin</a>
+      </div>
+      <div class="footer-copyright">
+        &copy; 2025 SmartSearch - An Intelligent Search Engine Project
+      </div>
+    </div>
+  </footer>
+
+  <script src="{{ static_url('js/enhanced-search.js') }}"></script>
+
+  <!-- Add this near the bottom of the file to check JSON serialization of results for debugging -->
+  {% if options.debug %}
+  <script>
+    // Log the results for debugging
+    console.log("Results data:", {{ json_encode(results) }});
+  </script>
+  {% endif %}
+</body>
+</html>
